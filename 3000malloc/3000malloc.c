@@ -1,3 +1,5 @@
+/* This is a simple test program to see the functionality of 3000heapsnoop. */
+
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
