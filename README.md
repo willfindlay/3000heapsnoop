@@ -2,6 +2,10 @@
 
 Snooping virtual to physical mapping of heap allocations in userspace.
 
+## Credits
+
+Inspiration for BPF program component taken from [memleak.py](https://github.com/iovisor/bcc/blob/master/tools/memleak.py)
+
 ## Requirements
 
 - Linux 4.9+
