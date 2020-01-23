@@ -31,7 +31,8 @@ import math
 from bcc import BPF
 
 # Path to the BPF program source file
-BPF_PROGRAM_PATH = os.path.realpath(os.path.join(os.path.dirname(__file__), 'bpf_program.c'))
+PROJECT_PATH = os.path.dirname(os.path.realpath(__file__))
+BPF_PROGRAM_PATH = os.path.realpath(os.path.join(PROJECT_PATH, 'bpf_program.c'))
 
 # Get page size from sysconf
 PAGE_SIZE = os.sysconf("SC_PAGE_SIZE")
@@ -146,7 +147,7 @@ if __name__ == '__main__':
 
     # Set flags
     flags = []
-    flags.append(f"-I{os.path.realpath(os.path.dirname(__file__))}")
+    flags.append(f"-I{PROJECT_PATH}")
     if args.pid:
         flags.append(f"-DHEAPSNOOP_PID={args.pid}")
     if args.comm:
