@@ -41,9 +41,13 @@ PAGE_SHIFT = int(math.log(PAGE_SIZE, 2))
 
 DESCRIPTION = """
 Snooping virtrual to physical mapping of heap allocations in userspace.
+Created by William Findlay for teaching purposes.
 """
 EPILOG = """
-Created by William Findlay for teaching purposes.
+Example usage:
+    sudo ./3000heapsnoop.py --comm 3000malloc # Trace all allocations by 3000malloc
+    sudo ./3000heapsnoop.py --pid 12374       # Trace all allocations by pid 12374
+    sudo ./3000heapsnoop.py                   # Trace all allocations systemwide (not recommended)
 """
 
 def print_formatted_items(*args, header=0):
