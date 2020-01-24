@@ -74,6 +74,44 @@ static int filter()
 #endif
 }
 
+static inline pgd_t *compute_pgd_offset(struct mm_struct *mm, void *virt)
+{
+    // TODO: implement this
+    return NULL;
+}
+
+static u64 page_walk(u64 virt)
+{
+    struct page *page = NULL;
+    struct task_struct *task = (struct task_struct *)bpf_get_current_task();
+
+    if (!task)
+    {
+        return 0;
+    }
+
+    struct mm_struct *mm = task->mm;
+
+    if (!mm)
+    {
+        return 0;
+    }
+
+    pgd_t *pgd;
+    p4d_t *p4d;
+    pud_t *pud;
+    pmd_t *pmd;
+    pte_t *ptep;
+
+    pgd = compute_pgd_offset(mm, virt);
+
+#ifdef HEAPSNOOP_DEBUG
+    bpf_trace_printk("%lx\n", mm->pgd);
+#endif
+
+    return 0; /* FIXME: for now... */
+}
+
 /* uprobes and uretprobes below this line ------------------------------ */
 
 static int alloc_enter(struct pt_regs *ctx, size_t s)
@@ -100,6 +138,7 @@ static int alloc_exit(struct pt_regs *ctx, u64 virt)
     struct allocation allocation = {};
     allocation.pid = pid;
     allocation.virt = virt;
+    allocation.phys = page_walk(virt);
     allocation.size = *size;
     bpf_get_current_comm(&allocation.comm, sizeof(allocation.comm));
 

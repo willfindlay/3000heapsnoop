@@ -26,6 +26,7 @@ struct allocation
 {
     u32 pid;
     u64 virt;
+    u64 phys;
     u64 size;
     char comm[TASK_COMM_LEN];
 };

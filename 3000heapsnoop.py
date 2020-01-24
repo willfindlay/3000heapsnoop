@@ -119,7 +119,8 @@ def register_perf_buffers(bpf):
 
         # Prepare virtual and physical address for printing
         virt = str(hex(v.virt))[2:].zfill(16)
-        phys = get_physical_mapping(v.pid, virt)
+        #phys = get_physical_mapping(v.pid, virt)
+        phys = str(hex(v.phys))[2:].zfill(16)
 
         # Print information
         print_formatted_items(v.pid, v.comm.decode('utf-8'), virt, phys, v.size)
