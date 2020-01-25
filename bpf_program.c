@@ -17,6 +17,8 @@
    The BPF program used here is based on memleak.py from bcc tools:
    https://github.com/iovisor/bcc/blob/master/tools/memleak.py */
 
+#include <asm/pgtable.h>
+
 #include "bpf_program.h"
 
 BPF_PERCPU_ARRAY(intermediate, u64, 1);
@@ -74,15 +76,56 @@ static int filter()
 #endif
 }
 
-static inline pgd_t *compute_pgd_offset(struct mm_struct *mm, void *virt)
+static inline pgd_t *bpf_pgd_offset(struct mm_struct *mm, u64 virt)
 {
-    // TODO: implement this
-    return NULL;
+    u64 shift;
+    bpf_probe_read(&shift, sizeof(pgdir_shift), &pgdir_shift);
+
+    pgd_t *pgd =  mm->pgd + (((virt) >> shift) & (PTRS_PER_PGD - 1));
+
+    return pgd;
+}
+
+static inline p4d_t *bpf_p4d_offset(pgd_t *pgd, u64 virt)
+{
+    u64 shift = P4D_SHIFT;
+    u64 ptrs;
+    bpf_probe_read(&ptrs, sizeof(ptrs_per_p4d), &ptrs_per_p4d);
+
+    p4d_t *p4d = (p4d_t *)pgd + (((virt) >> shift) & (ptrs - 1));
+
+    return p4d;
+}
+
+static inline pud_t *bpf_pud_offset(p4d_t *p4d, u64 virt)
+{
+    u64 shift = PUD_SHIFT;
+
+    pud_t *pud = (pud_t *)p4d + (((virt) >> shift) & (PTRS_PER_PUD - 1));
+
+    return pud;
+}
+
+static inline pmd_t *bpf_pmd_offset(pud_t *pud, u64 virt)
+{
+    u64 shift = PUD_SHIFT;
+
+    pmd_t *pmd = (pmd_t *)pud + (((virt) >> shift) & (PTRS_PER_PMD - 1));
+
+    return pmd;
+}
+
+static inline pte_t *bpf_pte_offset(pmd_t *pmd, u64 virt)
+{
+    u64 shift = PAGE_SHIFT;
+
+    pte_t *pte = (pte_t *)pmd + (((virt) >> shift) & (PTRS_PER_PTE - 1));
+
+    return pte;
 }
 
 static u64 page_walk(u64 virt)
 {
-    struct page *page = NULL;
     struct task_struct *task = (struct task_struct *)bpf_get_current_task();
 
     if (!task)
@@ -97,19 +140,34 @@ static u64 page_walk(u64 virt)
         return 0;
     }
 
-    pgd_t *pgd;
-    p4d_t *p4d;
-    pud_t *pud;
-    pmd_t *pmd;
-    pte_t *ptep;
+    pgd_t *pgd = bpf_pgd_offset(mm, virt);
+    if (!pgd)
+        return 1;
+    p4d_t *p4d = bpf_p4d_offset(pgd, virt);
+    if (!p4d)
+        return 1;
+    pud_t *pud = bpf_pud_offset(p4d, virt);
+    if (!pud)
+        return 1;
+    pmd_t *pmd = bpf_pmd_offset(pud, virt);
+    if (!pmd)
+        return 1;
+    pte_t *ptep = bpf_pte_offset(pmd, virt);
+    if (!ptep)
+        return 1;
+    //bpf_trace_printk("pgd %lx\n", pgd);
+    //bpf_trace_printk("p4d %lx\n", p4d);
+    //bpf_trace_printk("pud %lx\n", pud);
+    //bpf_trace_printk("pmd %lx\n", pmd);
+    //bpf_trace_printk("pte %lx\n", ptep);
+    pte_t pte = *ptep;
 
-    pgd = compute_pgd_offset(mm, virt);
+    bpf_trace_printk("%lx\n", pte.pte);
 
-#ifdef HEAPSNOOP_DEBUG
-    bpf_trace_printk("%lx\n", mm->pgd);
-#endif
+    u64 pfn = pte.pte & 0x007FFFFFFFFFFFFF;
+    u64 phys = (pfn << PAGE_SHIFT) + (virt % PAGE_SIZE);
 
-    return 0; /* FIXME: for now... */
+    return phys;
 }
 
 /* uprobes and uretprobes below this line ------------------------------ */
