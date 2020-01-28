@@ -142,29 +142,37 @@ static u64 page_walk(u64 virt)
 
     pgd_t *pgd = bpf_pgd_offset(mm, virt);
     if (!pgd)
-        return 1;
+        return 0;
     p4d_t *p4d = bpf_p4d_offset(pgd, virt);
     if (!p4d)
-        return 1;
+        return 0;
     pud_t *pud = bpf_pud_offset(p4d, virt);
     if (!pud)
-        return 1;
+        return 0;
     pmd_t *pmd = bpf_pmd_offset(pud, virt);
     if (!pmd)
-        return 1;
+        return 0;
     pte_t *ptep = bpf_pte_offset(pmd, virt);
     if (!ptep)
-        return 1;
-    //bpf_trace_printk("pgd %lx\n", pgd);
-    //bpf_trace_printk("p4d %lx\n", p4d);
-    //bpf_trace_printk("pud %lx\n", pud);
-    //bpf_trace_printk("pmd %lx\n", pmd);
-    //bpf_trace_printk("pte %lx\n", ptep);
+        return 0;
     pte_t pte = *ptep;
 
-    bpf_trace_printk("%lx\n", pte.pte);
+#ifdef HEAPSNOOP_DEBUG
+    bpf_trace_printk("pgd  %lx\n", pgd);
+    bpf_trace_printk("p4d  %lx\n", p4d);
+    bpf_trace_printk("pud  %lx\n", pud);
+    bpf_trace_printk("pmd  %lx\n", pmd);
+    bpf_trace_printk("ptep %lx\n", ptep);
+    bpf_trace_printk("pte  %lx\n", pte);
+#endif
 
-    u64 pfn = pte.pte & 0x007FFFFFFFFFFFFF;
+    /* Take pteval from pte */
+    u64 pfn = pte.pte;
+    /* Check if it needs to be inverted... */
+    u64 xor = pfn && !(pfn & _PAGE_PRESENT) ? ~0ull : 0;
+    /* And if so, invert it. */
+    pfn ^= xor;
+    pfn = (pfn) >> PAGE_SHIFT;
     u64 phys = (pfn << PAGE_SHIFT) + (virt % PAGE_SIZE);
 
     return phys;
